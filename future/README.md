@@ -1,15 +1,11 @@
-# Future roadmap
+# Future notes
 
-This directory collects notes and stubs for potential future enhancements:
+Shipped in 0.3: Backup snapshots, cross-chat search, Signal Browser name, official Signal mark with dashed outline. Public repo: github.com/leorami/signal-browser.
 
-- Message searching and filtering
-- Dynamic retrieval (on-demand) instead of single static HTML
-- Rich reply threading: show quoted/replied message above bubbles
-- Live sync with the current Signal Desktop DB
-- Schema compatibility shims for prior Signal versions
-- Contact info display (names, avatars, phone numbers, service IDs)
-- Web UI framework exploration (React/Vite or minimal Vanilla JS)
-- Packaging: pre-commit hooks, ruff/black, CI via GitHub Actions
+Still open if needed:
 
-These are intentionally out of scope for the initial refactor but help guide
-incremental improvements without disrupting working exports.
+- Windows/Linux PyInstaller packages (same Python app; build on that OS). iOS/Android are not PyInstaller targets.
+- Official Signal Desktop `metadata.json` / `main.jsonl` importer
+- Schema shims for very old Signal Desktop versions
+- Pre-commit hooks and GitHub Actions CI
+- Snapshot prune / size caps for very large histories
