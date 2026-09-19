@@ -1,139 +1,181 @@
-# Signal Desktop → HTML Export
+# Signal Browser
 
 **Author:** Leo A. Ramirez Jr. — <leo.ramirez@alumni.stanford.edu>
 
-## What it does
+**Repository:** [github.com/leorami/signal-browser](https://github.com/leorami/signal-browser)
 
-- Decrypts Signal Desktop data into a plain SQLite using [signalbackup-tools](https://github.com/bepaald/signalbackup-tools) by [@bepaald](https://github.com/bepaald)
-- Builds a responsive, light-themed HTML viewer of your conversations
-- Copies attachments; best-effort decrypts certain unreadable blobs (if keys available)
-- Includes call events (incoming/outgoing/missed) rendered as centered chips
-- Shows a clean UI with searchable thread list and grouped messages
+A local, read-only archive of your Signal Desktop chats. It looks like Signal, stays on this computer, and never sends a copy anywhere.
 
-Current limitations (intentional, for safety and clarity):
-- Sidebar avatars are disabled for now (initials-only).
-- In-chat image thumbnails are disabled; image attachments are shown as archive icons with a tooltip.
+<p align="center">
+  <img src="docs/images/chats.png" alt="Signal Browser with a pinned chat, History and Backup in the header, and a thread with incoming and outgoing bubbles, a voice-call chip, a quote, and a reaction" width="920">
+</p>
 
-## Screenshot
+<p align="center"><em>Fictional sample chats for the screenshot — not a real export.</em></p>
 
-![Signal Export UI](src/signal_export/assets/Signal%20Export%20Screenshot.png)
+There are two ways to use it:
 
-## Project layout
+1. **Signal Browser.app** — passphrase lock, encrypted vault, **Backup**, **History**
+2. **Static HTML** — a frozen `index.html` you can open in any browser, with the same chat list, search, and bubbles
 
+---
+
+## On a Mac: no command line
+
+If you already have a built app:
+
+1. Open **`dist/Signal Browser.app`**
+2. Drag it to **Applications** if you want it in Launchpad and Spotlight
+3. Double-click **Signal Browser**, choose a passphrase, then **Backup**
+
+<p align="center">
+  <img src="docs/images/unlock.png" alt="Unlock card: Signal Browser wordmark, passphrase field, and Unlock button with a gap between the field and the button" width="420">
+</p>
+
+Later launches ask for that passphrase — not your Mac password. After 15 minutes idle, or when you close the window, the archive locks again.
+
+That is the whole launch path. You do not need Terminal, `pip`, or Python.
+
+macOS applies its usual rounded-square mask to the Dock icon. The artwork is Signal blue (`#3B45FD`) with an inset white dashed bubble and a small compass.
+
+### Why the app lives in `dist/`, not the repo root
+
+A `.app` bundle is a compiled, machine-specific folder (tens of megabytes, often unsigned). Putting it in git would bloat every clone, go stale whenever the sources change, and be the wrong binary for another Mac architecture.
+
+`dist/` is gitignored. **Ship downloads from GitHub Releases** (zip `Signal Browser.app`) when other people should not have to build. Developers regenerate it with:
+
+```bash
+./scripts/package_macos.sh
+open "dist/Signal Browser.app"
 ```
-.
-├─ pyproject.toml
-├─ README.md
-├─ .gitignore
-├─ env.template                # copy to .env and customize
-├─ scripts/
-│  └─ signal_export.sh         # macOS helper (decrypt + run Python CLI)
-├─ src/
-│  └─ signal_export/
-│     ├─ __init__.py
-│     ├─ cli.py                # cross-platform CLI (Python-only)
-│     ├─ exporter.py           # export pipeline (DB→data→HTML, progress bars)
-│     ├─ utils.py              # helpers
-│     └─ assets/
-│        ├─ template.html      # UI (avatars off, no clickable images)
-│        └─ styles.css
-├─ tests/
-│  ├─ conftest.py
-│  ├─ test_cli.py
-│  ├─ test_render.py
-│  └─ test_utils.py
-└─ future/
-   └─ README.md
+
+Requires macOS, Python 3.9+, [ImageMagick](https://imagemagick.org/) (`magick`), and [signalbackup-tools](https://github.com/bepaald/signalbackup-tools) for the Desktop dump.
+
+The on-disk vault is `~/Library/Application Support/SignalBrowser/vault`. Set `SIGNAL_BROWSER_HOME` to move it.
+
+---
+
+## What the app can do
+
+| | |
+| --- | --- |
+| **Backup** | Closes Signal Desktop briefly, copies chats and media into an encrypted vault |
+| **Browse** | Read-only threads with avatars, images, video, audio, files, and calls |
+| **Search** | Matches names and message text across every conversation |
+| **History** | Open an older snapshot; delete one only after a warning you cannot undo |
+| **Lock** | Passphrase on launch; auto-lock after 15 minutes idle and when the window closes |
+
+Search across chats uses a muted gold highlight. The selected hit gets a teal ring so you can jump straight to that message.
+
+<p align="center">
+  <img src="docs/images/search.png" alt="Searching for trailhead: gold highlights in the message list and in the thread, with a teal ring around the selected bubble" width="920">
+</p>
+
+**History** lists every snapshot. Open one to browse it, or delete it permanently after a confirmation you cannot undo.
+
+<p align="center">
+  <img src="docs/images/history.png" alt="Backups panel over the chat view, listing three snapshots with Latest highlighted and a Delete action on each row" width="920">
+</p>
+
+---
+
+## Static HTML export
+
+The HTML viewer is the same layout, search, avatars, media, and call chips as the app. It is a single folder: `index.html` plus `assets/`. There is no server, no passphrase, and no live Backup.
+
+**Use HTML** when you want a readable snapshot you can zip, copy to another disk, or open later without Signal Browser.app.
+
+**Use the app** when you want Time Machine-style **History**, an encrypted vault, and one-click **Backup** from live Signal Desktop.
+
+What stays desktop-only:
+
+- Passphrase lock
+- Encrypted vault and snapshot delete
+- **Backup** from Signal Desktop
+- Serving media from encrypted blobs (HTML writes ordinary files under `assets/`)
+
+### Build HTML
+
+```bash
+pip install -e .
+signal-browser-html --db /path/to/signal_plain.sqlite \
+  --src "$HOME/Library/Application Support/Signal/attachments.noindex" \
+  --out "$HOME/signal_browser_html"
 ```
 
-## Requirements
+Then open `$HOME/signal_browser_html/index.html`. Helper for power users: `./scripts/signal_browser.sh` (decrypts Desktop with `signalbackup-tools`, then runs the same CLI).
 
-- Python 3.9+ (tested on 3.9-3.12)
-- For macOS end-to-end flow: Homebrew + [`signalbackup-tools`](https://github.com/bepaald/signalbackup-tools) for DB decryption
-- Optional: OpenSSL CLI on PATH (improves best-effort decryption)
+---
 
-## Credits
+## Other platforms
 
-This project relies on the excellent [signalbackup-tools](https://github.com/bepaald/signalbackup-tools) by [@bepaald](https://github.com/bepaald) for decrypting Signal Desktop databases. Without this tool, none of this would be possible.
+The macOS `.app` is a **PyInstaller** wrapper around the same Python app (`pywebview` + a localhost UI). That pattern does **not** automatically give you every OS.
 
-## Configuration (.env and environment variables)
+| Platform | Same approach? | Notes |
+| --- | --- | --- |
+| **Windows** | Yes, in spirit | PyInstaller can build a windowed `.exe` **on a Windows machine** (or Windows CI). You would add a `.ico`, a Windows spec, and optionally an installer. Cross-compiling from a Mac is not reliable. |
+| **Linux** | Yes, in spirit | PyInstaller (or a `.desktop` launcher) on Linux. Same Python code; you still need Signal Desktop’s data directory on that machine. |
+| **iOS / iPadOS** | No | PyInstaller and pywebview target desktop. Signal iOS does not use the Desktop database this tool reads. |
+| **Android** | No | Not a PyInstaller target. Signal Android’s store is separate from Desktop. |
+
+HTML export already works anywhere you can open a browser. A Windows `.exe` is the realistic next packaged app.
+
+---
+
+## Privacy
+
+- The desktop app listens only on `127.0.0.1`
+- Vault is scrypt + AES-GCM
+- Snapshot files are overwritten with random bytes before they are removed
+- Temporary decrypted files are deleted after each backup
+- HTML is a local folder of files you control — do not upload it if the chats are private
+- No analytics, no remote assets
+
+---
+
+## From source
+
+Clone the public repo:
+
+```bash
+git clone https://github.com/leorami/signal-browser.git
+cd signal-browser
+```
+
+The Python package is `signal-browser` / `signal_browser`.
+
+### Desktop app without packaging
+
+```bash
+pip install -e ".[app]"
+signal-browser
+```
+
+### Configuration
 
 Precedence: CLI flags > `.env` > process env > defaults.
 
-Copy `env.template` to `.env` and adjust:
-
 ```
-# If not set, DB defaults to "$DB_OUT/signal_plain.sqlite"
 DB=
-
-# Where the decrypted SQLite file should live (default: $HOME)
 DB_OUT="$HOME"
-
-# Signal attachments directory
 SRC="$HOME/Library/Application Support/Signal/attachments.noindex"
-
-# Where the HTML export should be written (default: $HOME/signal_export_html)
-HTML_OUT="$HOME/signal_export_html"
-
-# Optional OpenSSL binary
-OPENSSL_BIN=
+HTML_OUT="$HOME/signal_browser_html"
+SIGNAL_BROWSER_HOME=   # vault location; default is the OS app-data dir
 ```
 
-- Values support `$VAR` and `~` expansion.
-- For privacy, consider setting `HTML_OUT` to `~/nobackup/signal_export_html` or another backup-excluded path.
+See [docs/TOOLING.md](docs/TOOLING.md) for why `signalbackup-tools` is the dump tool and when `sigtop` is a fallback.
 
-## Usage
-
-### Python-only (cross-platform)
+### Tests
 
 ```bash
-# Direct run without install
-PYTHONPATH=src \
-python -m signal_export.cli \
-  --db /path/to/signal_plain.sqlite \
-  --src "/path/to/attachments.noindex" \
-  --out "$HOME/signal_export_html"
-
-# Or install a console script
-pip install -e .
-signal-export \
-  --db /path/to/signal_plain.sqlite \
-  --src "/path/to/attachments.noindex" \
-  --out "$HOME/signal_export_html"
-```
-
-### macOS helper script (end-to-end)
-
-```bash
-cp env.template .env   # edit to suit your environment
-./scripts/signal_export.sh
-```
-
-- The script cd’s to the repo root, sources `.env`, computes sensible defaults using `$HOME`, and sets `PYTHONPATH` for local runs.
-- It then runs `signalbackup-tools` to create/rotate `DB` and invokes the Python CLI to build the export.
-
-### Progress display
-
-- Terminal progress bars show:
-  - Conversations and messages processed
-  - Percent, counts, elapsed time, and ETA
-
-## Testing
-
-```
-pip install -e .[dev]
+pip install -e ".[dev]"
 pytest -q
 ```
 
-- Tests include CLI smoke test, asset presence, env fallback behavior, and helper utilities.
-- Grow coverage over time (goal: 1/2 to 2/3 lines of code in tests).
+---
 
 ## Notes
 
-- Avatars and image thumbnails are intentionally disabled at present due to decryption inconsistencies; message text and attachments (as links/icons) are fully exported.
-- Decryption is best-effort; some files may remain unreadable.
-- All processing is local. No network calls.
-
-## Future
-
-Planned: reliable avatar/image handling, message search, reply threading, live DB sync, schema compatibility, contact info, optional React UI. See `future/README.md`.
+- All processing is local.
+- Attachment decryption is best-effort when keys or files are missing.
+- `sigtop` is an optional fallback if `signalbackup-tools` is not installed.
+- The in-app logo stays a transparent Signal bubble with a compass. Only the macOS Dock / `.icns` uses the solid blue square.
