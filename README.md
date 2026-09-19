@@ -72,6 +72,19 @@ Search across chats uses a muted gold highlight. The selected hit gets a teal ri
 
 **History** lists every snapshot. Open one to browse it, or delete it permanently after a confirmation you cannot undo.
 
+---
+
+## If you replace your phone
+
+This vault is a **local archive**. It is not a Signal restore, and it cannot put old chats back into Signal.
+
+- Relinking Signal Desktop starts a new Desktop database. This app cannot write the vault into that database.
+- Linked devices only receive **new** messages from the phone. Desktop history does not propagate to iPhone or other linked instances.
+- Official Signal Desktop → phone restore exists for **Android only**, and it uses Signal’s own backup — not this vault. iPhone cannot be filled from Desktop or from Signal Browser.
+- After a relink, **Backup** copies whatever live Desktop has *now* (often only new chats) as another snapshot. Older snapshots stay until you delete them.
+
+Keep this vault. Use **History** here to read the chats you already saved. Do **not** overwrite `~/Library/Application Support/Signal` with an old copy: that fights the new link and can brick Desktop.
+
 <p align="center">
   <img src="docs/images/history.png" alt="Backups panel over the chat view, listing three snapshots with Latest highlighted and a Delete action on each row" width="920">
 </p>

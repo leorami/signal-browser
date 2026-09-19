@@ -167,7 +167,7 @@ body{
   width:auto; flex:0 0 auto; background:transparent; color:var(--danger);
 }
 .snapshot-delete:hover, .card .snapshot-delete:hover{ background:#fdecec; }
-.history-card{ width:min(480px, calc(100vw - 32px)); }
+.history-card{ width:min(520px, calc(100vw - 32px)); }
 #delete-panel{ z-index:24; }
 .card input[type=checkbox]{ width:auto; }
 .msg.focus, .call.focus .pill{
@@ -197,6 +197,7 @@ mark.hit{
 .empty-hero .hero-mark{ width:72px; height:72px; }
 .empty-hero .hero-mark svg{ width:72px; height:72px; display:block; }
 .empty-hero h2{ margin:8px 0 0; color:var(--text); font-weight:600; }
+.empty-hero p{ max-width:36em; }
 .msgs{ flex:1; min-height:0; overflow:auto; background:
   radial-gradient(circle at 1px 1px, #f3f3f5 1px, transparent 0) 0 0 / 22px 22px;
 }
