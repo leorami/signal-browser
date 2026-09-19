@@ -25,7 +25,7 @@ fi
 
 # ---------- Defaults (overridable via environment) ----------
 DB_OUT="${DB_OUT:-"$HOME/.artifacts"}"
-HTML_OUT="${HTML_OUT:-"$HOME/.artifacts/signal_export_html"}"
+HTML_OUT="${HTML_OUT:-"$HOME/.artifacts/signal_browser_html"}"
 DB="${DB:-"$DB_OUT/signal_plain.sqlite"}"
 SRC_DEFAULT="$HOME/Library/Application Support/Signal/attachments.noindex"
 SRC="${SRC:-$SRC_DEFAULT}"
@@ -73,11 +73,11 @@ mkdir -p "$HTML_OUT"
 
 # ---------- Export HTML (Python CLI) ----------
 echo "→ Building HTML export (avatars, attachments, calls)"
-if command -v signal-export >/dev/null 2>&1; then
-  signal-export --db "$DB" --src "$SRC" --out "$HTML_OUT" ${OPENSSL_BIN:+--openssl "$OPENSSL_BIN"}
+if command -v signal-browser-html >/dev/null 2>&1; then
+  signal-browser-html --db "$DB" --src "$SRC" --out "$HTML_OUT" ${OPENSSL_BIN:+--openssl "$OPENSSL_BIN"}
 else
   PYTHONPATH="$(pwd)/src${PYTHONPATH:+":$PYTHONPATH"}" \
-  python3 -m signal_export.cli --db "$DB" --src "$SRC" --out "$HTML_OUT" ${OPENSSL_BIN:+--openssl "$OPENSSL_BIN"}
+  python3 -m signal_browser.cli --db "$DB" --src "$SRC" --out "$HTML_OUT" ${OPENSSL_BIN:+--openssl "$OPENSSL_BIN"}
 fi
 
 echo "→ Done. Open: $HTML_OUT/index.html"

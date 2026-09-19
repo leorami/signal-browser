@@ -54,7 +54,7 @@ def resolve_paths(args) -> tuple[str, str, str]:
     - DB:   if not set, becomes f"{DB_OUT}/signal_plain.sqlite".
     - OUT:  prefers HTML_OUT, falls back to OUT.
     - DB_OUT default: f"{HOME}"
-    - HTML_OUT default: f"{HOME}/signal_export_html"
+    - HTML_OUT default: f"{HOME}/signal_browser_html"
     """
     project_root = Path(__file__).resolve().parents[2]
     home = os.environ.get("HOME") or str(project_root / ".artifacts")
@@ -62,7 +62,7 @@ def resolve_paths(args) -> tuple[str, str, str]:
     src = (args.src or os.environ.get("SRC") or default_src_path())
 
     db_out = os.environ.get("DB_OUT") or f"{home}"
-    html_out = os.environ.get("HTML_OUT") or os.environ.get("OUT") or f"{home}/signal_export_html"
+    html_out = os.environ.get("HTML_OUT") or os.environ.get("OUT") or f"{home}/signal_browser_html"
 
     db = (args.db or os.environ.get("DB") or str(Path(db_out) / "signal_plain.sqlite"))
 
@@ -81,9 +81,9 @@ def resolve_paths(args) -> tuple[str, str, str]:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="signal-export",
+        prog="signal-browser-html",
         description=(
-            "Build Signal export HTML from a plain SQLite DB.\n"
+            "Build static Signal Browser HTML from a plain SQLite DB.\n"
             "Env precedence: CLI flags > .env > process env > defaults\n"
             "Env vars: DB, SRC, OUT/HTML_OUT, DB_OUT, OPENSSL_BIN"
         ),
@@ -93,14 +93,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", default=None, help="Output directory for HTML and assets.")
     p.add_argument("--template", default=None, help="Optional path to template.html. Defaults to packaged asset.")
     p.add_argument("--css", default=None, help="Optional path to styles.css. Defaults to packaged asset.")
-    p.add_argument("--openssl", default=None, help="Path to OpenSSL binary (optional).")
+    p.add_argument("--openssl", default=None, help="Path to OpenSSL binary (optional, unused).")
     p.add_argument("--env-file", default=".env", help="Path to .env file to load (default: .env in CWD).")
+    p.add_argument("--app", action="store_true", help="Launch the local desktop app (no CLI flags needed).")
+    p.add_argument("--serve", action="store_true", help="With --app, open the local site in a browser.")
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
     ap = build_parser()
     args = ap.parse_args(argv)
+
+    if args.app or args.serve:
+        from .app.main import main as app_main
+        flags = ["--serve"] if args.serve else []
+        app_main(flags)
+        return
 
     load_env_file(Path(args.env_file))
 

@@ -3,7 +3,7 @@ import sys
 import shutil
 from unittest.mock import patch, MagicMock
 import pytest
-from src.signal_export.exporter import _progress, _supports_color
+from signal_browser.exporter import _progress, _supports_color
 
 
 def test_supports_color():
@@ -51,7 +51,7 @@ def test_progress_with_color():
         with patch('shutil.get_terminal_size') as mock_size:
             mock_size.return_value = MagicMock(columns=80)
             with patch('time.time', return_value=1000.0):
-                with patch('src.signal_export.exporter._supports_color', return_value=True):
+                with patch('signal_browser.progress._supports_color', return_value=True):
                     _progress("Colored", 25, 100, 998.0)
     
     output = captured_output.getvalue()

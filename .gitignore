@@ -20,9 +20,11 @@ dist/
 # Project outputs
 *.sqlite
 signal_plain.sqlite*
-signal_export_html/
+signal_browser_html/
 .artifacts/
 out/
+dist/
+*.spec.bak
 
 # Coverage
 .coverage*

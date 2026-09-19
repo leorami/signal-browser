@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Signal Browser</title>
+<style>/*__INLINE_CSS__*/</style>
+<div id="gate-setup" class="gate">
+  <form class="card" id="setup-form">
+    <div class="brand-lockup"><!--__LOGO__--><span class="suffix">Signal Browser</span></div>
+    <h2>Protect this archive</h2>
+    <p>Choose a passphrase. Your Signal copy stays on this Mac and is encrypted at rest. You will enter this passphrase to unlock the app — not your Mac password.</p>
+    <label for="setup-pass">Passphrase</label>
+    <input id="setup-pass" type="password" autocomplete="new-password" required minlength="8" />
+    <label for="setup-pass2">Confirm</label>
+    <input id="setup-pass2" type="password" autocomplete="new-password" required minlength="8" />
+    <div class="error" id="setup-error"></div>
+    <button type="submit">Create lock &amp; backup</button>
+  </form>
+</div>
+<div id="gate-unlock" class="gate">
+  <form class="card" id="unlock-form">
+    <div class="brand-lockup"><!--__LOGO__--><span class="suffix">Signal Browser</span></div>
+    <h2>Unlock</h2>
+    <p>Enter your passphrase to browse the local, read-only archive.</p>
+    <label for="unlock-pass">Passphrase</label>
+    <input id="unlock-pass" type="password" autocomplete="current-password" required />
+    <div class="error" id="unlock-error" role="alert"></div>
+    <button type="submit">Unlock</button>
+  </form>
+</div>
+<div class="app" id="shell" style="visibility:hidden">
+  <aside class="rail">
+    <div class="mark" aria-hidden="true"><!--__LOGO__--></div>
+    <button class="active" title="Chats">💬</button>
+    <div class="spacer"></div>
+    <button id="btn-lock" title="Lock">🔒</button>
+  </aside>
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h1>Chats</h1>
+      <button id="btn-history" title="Backup history">History</button>
+      <button class="primary" id="btn-update">Backup</button>
+    </div>
+    <div class="search"><input id="q" placeholder="Search chats and messages" /></div>
+    <div class="sidebar-scroll">
+      <div id="search-hits-section" class="section" style="display:none">Messages</div>
+      <ul id="search-hits" class="threadlist"></ul>
+      <div id="pinned-section" class="section" style="display:none">Pinned</div>
+      <ul id="pinned" class="threadlist"></ul>
+      <div id="known-section" class="section">Chats</div>
+      <ul id="known" class="threadlist"></ul>
+    </div>
+  </aside>
+  <section class="main">
+    <div id="history-banner" class="history-banner">
+      <span id="history-banner-text">Viewing an older backup</span>
+      <button type="button" id="btn-latest">Return to latest</button>
+    </div>
+    <div class="header">
+      <div id="title" class="title">Welcome to Signal Browser</div>
+      <div class="count" id="count"></div>
+      <div class="stamp" id="stamp"></div>
+    </div>
+    <div id="empty-hero" class="empty-hero">
+      <div class="hero-mark" aria-hidden="true"><!--__LOGO__--></div>
+      <h2>Welcome to Signal Browser</h2>
+      <p>Click Backup to save a local copy, then search and browse chats just like Signal — read only, on this device.</p>
+    </div>
+    <div id="msgs" class="msgs" style="display:none"><div class="container"></div></div>
+    <div class="composer">Read only · nothing leaves this machine</div>
+  </section>
+</div>
+<div id="progress" class="progress-overlay">
+  <div class="card progress-card">
+    <h2>Creating backup</h2>
+    <p id="progress-label">Starting…</p>
+    <div class="bar"><span id="progress-bar"></span></div>
+  </div>
+</div>
+<div id="history-panel" class="gate">
+  <div class="card history-card">
+    <h2>Backups</h2>
+    <p>Open a snapshot to browse it, or delete one permanently. Deletion cannot be undone.</p>
+    <ul id="snapshot-list" class="snapshot-list"></ul>
+    <button type="button" id="history-close">Close</button>
+  </div>
+</div>
+<div id="delete-panel" class="gate">
+  <div class="card">
+    <h2>Delete this backup?</h2>
+    <p id="delete-warning">This permanently erases the encrypted snapshot from this Mac. It cannot be recovered.</p>
+    <label class="row" for="delete-confirm">
+      <input id="delete-confirm" type="checkbox" />
+      <span>I understand this cannot be undone</span>
+    </label>
+    <div class="error" id="delete-error"></div>
+    <div class="actions">
+      <button type="button" class="secondary" id="delete-cancel">Cancel</button>
+      <button type="button" class="danger" id="delete-confirm-btn" disabled>Delete permanently</button>
+    </div>
+  </div>
+</div>
+<div id="lightbox" class="lightbox"></div>
+<script>
+/*__VIEWER_JS__*/
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+
+async function api(path, opts){
+  const headers = Object.assign({'X-Export-Token': TOKEN}, (opts && opts.headers) || {});
+  if (opts && opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)){
+    headers['Content-Type'] = 'application/json';
+    opts = Object.assign({}, opts, {body: JSON.stringify(opts.body)});
+  }
+  const res = await fetch(path, Object.assign({headers}, opts||{}));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function show(el, on){ el.classList.toggle('active', !!on); }
+function mediaPath(path){
+  if (!path) return '';
+  if (path.startsWith('blob:')) return '/media/' + path.slice(5) + '?t=' + encodeURIComponent(TOKEN);
+  return path;
+}
+
+let viewer = null;
+
+function mountViewer(payload){
+  document.getElementById('shell').style.visibility = 'visible';
+  const msgsEl = document.getElementById('msgs');
+  const empty = document.getElementById('empty-hero');
+  const known = payload.threads || [];
+  viewer = initViewer({
+    data: known,
+    meta: {exportedOn: payload.exportedOn},
+    resolve: mediaPath,
+    search: (q) => api('/api/search?q=' + encodeURIComponent(q)),
+    loadThread: async (t) => {
+      msgsEl.style.display = 'block';
+      if (empty) empty.style.display = 'none';
+      const full = await api('/api/thread/' + encodeURIComponent(t.id));
+      return full.thread;
+    }
+  });
+}
+
+let pendingDelete = null;
+
+function renderSnapshotList(items){
+  const list = document.getElementById('snapshot-list');
+  list.innerHTML = '';
+  if (!items.length){
+    const li = document.createElement('li');
+    li.innerHTML = '<div class="when">No saved snapshots</div><div class="meta">The live archive stays. Click Backup to keep a recoverable copy.</div>';
+    li.style.cursor = 'default';
+    list.appendChild(li);
+    return;
+  }
+  items.forEach(item => {
+    const li = document.createElement('li');
+    if (item.current) li.classList.add('current');
+    const copy = document.createElement('div');
+    copy.className = 'snapshot-copy';
+    const when = document.createElement('div');
+    when.className = 'when';
+    when.textContent = item.label || item.created || item.id;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const bits = [];
+    if (item.current) bits.push('Latest');
+    if (item.conversations) bits.push(item.conversations + ' chats');
+    if (item.messages) bits.push(item.messages + ' messages');
+    meta.textContent = bits.join(' · ') || item.id;
+    copy.append(when, meta);
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'snapshot-delete';
+    del.textContent = 'Delete';
+    del.setAttribute('aria-label', 'Delete backup ' + (item.label || item.id));
+    del.onclick = (ev) => {
+      ev.stopPropagation();
+      openDeleteConfirm(item);
+    };
+    li.append(copy, del);
+    li.onclick = async () => {
+      show(document.getElementById('history-panel'), false);
+      if (item.current) await api('/api/latest', {method:'POST', body:{}});
+      else await api('/api/snapshot', {method:'POST', body:{id: item.id}});
+      await refreshAfterUnlock();
+    };
+    list.appendChild(li);
+  });
+}
+
+function openDeleteConfirm(item){
+  pendingDelete = item;
+  const warn = document.getElementById('delete-warning');
+  const extra = item.current
+    ? ' This is the latest snapshot. The live archive remains, but this recoverable copy will be gone forever.'
+    : ' Media that exists only in this snapshot will also be erased.';
+  warn.textContent = 'This permanently erases the encrypted snapshot from this Mac. It cannot be recovered.' + extra;
+  document.getElementById('delete-error').textContent = '';
+  document.getElementById('delete-confirm').checked = false;
+  document.getElementById('delete-confirm-btn').disabled = true;
+  show(document.getElementById('delete-panel'), true);
+}
+
+async function refreshChrome(){
+  const status = await api('/api/status');
+  const banner = document.getElementById('history-banner');
+  const text = document.getElementById('history-banner-text');
+  if (status.historical && status.exportedOn){
+    text.textContent = 'Viewing backup from ' + status.exportedOn;
+    banner.classList.add('active');
+  } else if (status.historical){
+    text.textContent = 'Viewing an older backup';
+    banner.classList.add('active');
+  } else {
+    banner.classList.remove('active');
+  }
+  renderSnapshotList(status.snapshots || []);
+}
+
+async function refreshAfterUnlock(){
+  const payload = await api('/api/conversations');
+  mountViewer(payload);
+  await refreshChrome();
+}
+
+async function boot(){
+  const status = await api('/api/status');
+  if (status.unlocked){
+    show(document.getElementById('gate-setup'), false);
+    show(document.getElementById('gate-unlock'), false);
+    await refreshAfterUnlock();
+    return;
+  }
+  if (!status.hasVault){
+    show(document.getElementById('gate-setup'), true);
+    return;
+  }
+  show(document.getElementById('gate-unlock'), true);
+}
+
+document.getElementById('setup-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const a = document.getElementById('setup-pass').value;
+  const b = document.getElementById('setup-pass2').value;
+  const err = document.getElementById('setup-error');
+  err.textContent = '';
+  if (a !== b){ err.textContent = 'Passphrases do not match.'; return; }
+  try{
+    await api('/api/setup', {method:'POST', body:{
+      passphrase: a
+    }});
+    show(document.getElementById('gate-setup'), false);
+    await runBackup();
+    await refreshAfterUnlock();
+  }catch(e){ err.textContent = e.message; }
+});
+
+document.getElementById('unlock-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const err = document.getElementById('unlock-error');
+  const field = document.getElementById('unlock-pass');
+  err.textContent = '';
+  field.classList.remove('invalid');
+  field.removeAttribute('aria-invalid');
+  try{
+    await api('/api/unlock', {method:'POST', body:{
+      passphrase: field.value
+    }});
+    show(document.getElementById('gate-unlock'), false);
+    await refreshAfterUnlock();
+  }catch(e){
+    field.classList.add('invalid');
+    field.setAttribute('aria-invalid', 'true');
+    err.textContent = friendlyUnlockError(e.message);
+    field.focus();
+    field.select();
+  }
+});
+document.getElementById('unlock-pass').addEventListener('input', () => {
+  const err = document.getElementById('unlock-error');
+  const field = document.getElementById('unlock-pass');
+  err.textContent = '';
+  field.classList.remove('invalid');
+  field.removeAttribute('aria-invalid');
+});
+
+function friendlyUnlockError(message){
+  const text = String(message || '').toLowerCase();
+  if (text.includes('unlock failed') || text.includes('passphrase') || text.includes('doesn’t match') || text.includes("doesn't match")){
+    return 'That passphrase doesn’t match. Try again.';
+  }
+  return message || 'Could not unlock the archive.';
+}
+
+document.getElementById('btn-lock').onclick = async () => {
+  await api('/api/lock', {method:'POST', body:{}});
+  location.reload();
+};
+
+document.getElementById('btn-update').onclick = async () => {
+  await runBackup();
+  await refreshAfterUnlock();
+};
+
+document.getElementById('btn-history').onclick = async () => {
+  await refreshChrome();
+  show(document.getElementById('history-panel'), true);
+};
+document.getElementById('history-close').onclick = () => show(document.getElementById('history-panel'), false);
+document.getElementById('delete-cancel').onclick = () => {
+  pendingDelete = null;
+  show(document.getElementById('delete-panel'), false);
+};
+document.getElementById('delete-confirm').onchange = (ev) => {
+  document.getElementById('delete-confirm-btn').disabled = !ev.target.checked;
+};
+document.getElementById('delete-confirm-btn').onclick = async () => {
+  if (!pendingDelete || !document.getElementById('delete-confirm').checked) return;
+  const err = document.getElementById('delete-error');
+  err.textContent = '';
+  const btn = document.getElementById('delete-confirm-btn');
+  btn.disabled = true;
+  try{
+    await api('/api/snapshot/delete', {method:'POST', body:{id: pendingDelete.id}});
+    pendingDelete = null;
+    show(document.getElementById('delete-panel'), false);
+    await refreshAfterUnlock();
+    await refreshChrome();
+  }catch(e){
+    err.textContent = e.message;
+    btn.disabled = !document.getElementById('delete-confirm').checked;
+  }
+};
+document.getElementById('btn-latest').onclick = async () => {
+  await api('/api/latest', {method:'POST', body:{}});
+  await refreshAfterUnlock();
+};
+
+async function runBackup(){
+  const overlay = document.getElementById('progress');
+  const label = document.getElementById('progress-label');
+  const bar = document.getElementById('progress-bar');
+  show(overlay, true);
+  try{
+    const start = api('/api/backup', {method:'POST', body:{}});
+    const timer = setInterval(async () => {
+      try{
+        const p = await api('/api/progress');
+        label.textContent = p.label || 'Working…';
+        const pct = Math.round(100 * (p.done||0) / Math.max(1, p.total||1));
+        bar.style.width = pct + '%';
+      }catch(e){ /* ignore poll errors */ }
+    }, 400);
+    await start;
+    clearInterval(timer);
+    bar.style.width = '100%';
+    label.textContent = 'Done';
+  }catch(e){
+    label.textContent = e.message;
+    await new Promise(r => setTimeout(r, 1800));
+  }
+  show(overlay, false);
+}
+
+boot().catch((e) => {
+  const err = document.getElementById('unlock-error');
+  err.textContent = friendlyUnlockError(e.message);
+  show(document.getElementById('gate-unlock'), true);
+});
+</script>
+</html>
