@@ -15,6 +15,7 @@ def test_packaged_assets_present():
     assert tpl.read_text(encoding="utf-8").startswith("<!DOCTYPE html>")
     assert "--signal:" in css.read_text(encoding="utf-8")
     assert ".sidebar-scroll{" in css.read_text(encoding="utf-8")
+    assert ".empty-hero p{" in css.read_text(encoding="utf-8")
 
 
 def test_template_contains_call_rendering():
@@ -49,6 +50,11 @@ def test_viewer_cross_chat_search():
     app = importlib_resources.files("signal_browser").joinpath("assets", "app.html").read_text(encoding="utf-8")
     assert "Backup" in app
     assert "History" in app
+    assert "do not restore Signal Desktop, iPhone, or other linked devices" in app
+    assert "does not restore Signal Desktop, iPhone, or other linked devices" in app
+    assert "does not restore Signal" in app
+    html_static = importlib_resources.files("signal_browser").joinpath("assets", "template.html").read_text(encoding="utf-8")
+    assert "does not restore Signal" in html_static
     assert 'id="history-banner"' in app
     assert "<h2>Unlock</h2>" in app
     assert "Unlock Signal Browser" not in app

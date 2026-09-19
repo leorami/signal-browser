@@ -36,6 +36,10 @@ Older fallbacks (GCM `nonce|ct|tag`, 32-byte CBC) remain for leftover blobs.
 
 Signal Desktop can write a plaintext chat-history folder (`metadata.json`, `main.jsonl`, `files/`). That is a shareable archive, not a one-click local backup. This app reads the live Desktop data directory instead so users never leave the app to export.
 
+## Not a restore tool
+
+Dump and decrypt are **one-way**. This project does not write the vault back into Signal Desktop, does not build an Android/iOS backup, and does not merge chats into `~/Library/Application Support/Signal`. After a phone replacement, keep the vault as the local archive. Official Desktop → phone restore is Android-only and uses Signal’s own backup format.
+
 ## Decision
 
 1. Dump Desktop SQLite with `signalbackup-tools`
