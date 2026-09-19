@@ -2,7 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 import pytest
-from src.signal_export.exporter import run_export
+from signal_browser.exporter import run_export
 
 
 def test_call_history_detection_and_rendering(tmp_dirs, tmp_path):

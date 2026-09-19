@@ -4,7 +4,7 @@
 # and tries AES-256-GCM (nonce|ct|tag) then AES-256-CBC (iv|ct).
 #
 # Usage:
-#   DB="signal_plain.sqlite" OUT="signal_export_html" ./scripts/decrypt_assets.sh
+#   DB="signal_plain.sqlite" OUT="signal_browser_html" ./scripts/decrypt_assets.sh
 #
 # Optional:
 #   OPENSSL_BIN="/opt/homebrew/opt/openssl@3/bin/openssl"  # custom OpenSSL
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 DB="${DB:-signal_plain.sqlite}"
-OUT="${OUT:-signal_export_html}"
+OUT="${OUT:-signal_browser_html}"
 OPENSSL_BIN="${OPENSSL_BIN:-openssl}"
 LIMIT="${LIMIT:-0}"
 

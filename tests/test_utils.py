@@ -1,4 +1,4 @@
-from signal_export.utils import safe, first_name, looks_unknown
+from signal_browser.utils import safe, first_name, looks_unknown
 
 
 def test_safe_truncates_and_sanitizes():

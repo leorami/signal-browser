@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "signal-export"
-version = "0.1.0"
-description = "Export Signal Desktop conversations to a responsive HTML viewer with call events, attachments, and search"
+name = "signal-browser"
+version = "0.3.0"
+description = "Signal Browser: encrypted local Signal archive, HTML export, and read-only Signal-like UI"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
@@ -24,21 +24,37 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = [
+  "cryptography>=42",
+]
 
 [project.optional-dependencies]
+app = [
+  "pywebview>=5",
+  "keyring>=25",
+]
+pack = [
+  "pyinstaller>=6",
+]
 dev = [
   "pytest>=7",
   "coverage>=7",
+  "cryptography>=42",
 ]
 
 [project.scripts]
-signal-export = "signal_export.cli:main"
+signal-browser-html = "signal_browser.cli:main"
+signal-browser = "signal_browser.app.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
-signal_export = [
+signal_browser = [
   "assets/*.html",
   "assets/*.css",
+  "assets/*.js",
+  "assets/*.svg",
 ]
 
 [tool.pytest.ini_options]

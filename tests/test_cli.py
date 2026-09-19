@@ -12,7 +12,7 @@ def test_cli_smoke(tmp_dirs, tiny_db):
     pythonpath = str(repo_root / "src")
     env["PYTHONPATH"] = (pythonpath + os.pathsep + env.get("PYTHONPATH", "")) if env.get("PYTHONPATH") else pythonpath
 
-    cmd = [sys.executable, "-m", "signal_export.cli", "--db", str(tiny_db), "--src", str(src), "--out", str(out)]
+    cmd = [sys.executable, "-m", "signal_browser.cli", "--db", str(tiny_db), "--src", str(src), "--out", str(out)]
     p = subprocess.run(cmd, capture_output=True, text=True, env=env)
     assert p.returncode == 0, p.stderr
     idx = out / "index.html"
@@ -53,7 +53,7 @@ def test_env_dbout_htmlout_home_fallback(tmp_path):
     # Explicitly set DB to avoid any platform-specific path quirks
     env["DB"] = str(db_path)
 
-    cmd = [sys.executable, "-m", "signal_export.cli", "--src", str(src)]
+    cmd = [sys.executable, "-m", "signal_browser.cli", "--src", str(src)]
     p = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(project_root))
     assert p.returncode == 0, p.stderr
     idx = html_out / "index.html"
